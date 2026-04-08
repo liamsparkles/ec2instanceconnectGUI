@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
     QFormLayout,
@@ -75,6 +75,27 @@ def _quote_win(s: str) -> str:
     if any(c in s for c in ' \t"&|<>^'):
         return '"' + s.replace('"', '\\"') + '"'
     return s
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _assets_dir() -> Path:
+    """Dev: project assets/. Frozen (PyInstaller): sys._MEIPASS/assets (bundle with --add-data)."""
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / "assets"
+    return _project_root() / "assets"
+
+
+def _window_icon() -> QIcon:
+    """Taskbar / window icon: prefer assets/logo.ico when present (bundled or dev)."""
+    ico = _assets_dir() / "logo.ico"
+    if ico.is_file():
+        return QIcon(str(ico))
+    if getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"):
+        return QIcon(sys.executable)
+    return QIcon()
 
 
 class MainWindow(QMainWindow):
@@ -326,7 +347,12 @@ class MainWindow(QMainWindow):
 
 def run_app(data_path: Optional[Path] = None) -> int:
     app = QApplication(sys.argv)
+    icon = _window_icon()
+    if not icon.isNull():
+        app.setWindowIcon(icon)
     path = data_path or default_data_path()
     w = MainWindow(path)
+    if not icon.isNull():
+        w.setWindowIcon(icon)
     w.show()
     return app.exec()

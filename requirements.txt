@@ -1,2 +1,3 @@
 PyQt6>=6.6.0
 ec2instanceconnectcli
+Pillow>=10.0.0
