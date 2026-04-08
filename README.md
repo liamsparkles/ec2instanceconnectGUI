@@ -70,14 +70,14 @@ The repo includes `**main.spec**`, which bundles the `**assets**` folder (icons)
 pyinstaller --clean --noconfirm main.spec
 ```
 
-The output is `**dist\main.exe**`.
+The output is `**dist\EC2InstanceConnect.exe**`.
 
 ### Command-line equivalent (no spec file)
 
 If you prefer not to use the spec file:
 
 ```powershell
-pyinstaller --onefile --windowed --icon=assets\logo.ico --add-data "assets;assets" main.py
+pyinstaller --onefile --windowed --name EC2InstanceConnect --icon=assets\logo.ico --add-data "assets;assets" main.py
 ```
 
 On Windows, `**--add-data**` uses the form `**source;destination_inside_the_bundle**`. The app loads resources from `**sys._MEIPASS\assets**` at runtime; omitting `**--add-data**` will break icons bundled under `**assets/**`.
