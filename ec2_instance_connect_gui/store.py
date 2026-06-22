@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -28,11 +31,76 @@ class ServerEntry:
             )
 
 
+def legacy_data_paths() -> List[Path]:
+    """Previous default locations (project data/ or next to the built exe)."""
+    paths: List[Path] = []
+    package_root = Path(__file__).resolve().parent.parent
+    paths.append(package_root / "data" / "servers.json")
+    if getattr(sys, "frozen", False):
+        paths.append(Path(sys.executable).resolve().parent / "data" / "servers.json")
+    return paths
+
+
+def migrate_legacy_data(target: Path) -> None:
+    """Copy servers from a legacy path when the new location has no file yet."""
+    if target.is_file():
+        return
+    for legacy in legacy_data_paths():
+        if legacy == target or not legacy.is_file():
+            continue
+        if not legacy.read_text(encoding="utf-8").strip():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy, target)
+        return
+
+
 def default_data_path() -> Path:
-    root = Path(__file__).resolve().parent.parent
-    data_dir = root / "data"
+    configured = load_data_directory()
+    data_dir = configured if configured is not None else default_storage_dir()
     data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "servers.json"
+    path = data_dir / "servers.json"
+    migrate_legacy_data(path)
+    return path
+
+
+def default_config_dir() -> Path:
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return Path(appdata) / "EC2InstanceConnectGUI"
+    return Path.home() / ".ec2instanceconnectgui"
+
+
+def settings_path() -> Path:
+    return default_config_dir() / "settings.json"
+
+
+def default_storage_dir() -> Path:
+    return default_config_dir() / "data"
+
+
+def load_data_directory() -> Optional[Path]:
+    path = settings_path()
+    if not path.is_file():
+        return None
+    raw = path.read_text(encoding="utf-8").strip()
+    if not raw:
+        return None
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get("data_directory")
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return Path(value).expanduser()
+
+
+def save_data_directory(directory: Path) -> None:
+    directory = directory.expanduser().resolve()
+    settings = settings_path()
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"data_directory": str(directory)}
+    settings.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def load_servers(path: Path) -> List[ServerEntry]:

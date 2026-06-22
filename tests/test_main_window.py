@@ -100,3 +100,30 @@ def test_connect_invokes_mssh(
     qtbot.mouseClick(main_window_with_server._btn_connect, Qt.MouseButton.LeftButton)
 
     assert calls == [("i-0123456789abcdef0", "ubuntu")]
+
+
+def test_save_failure_shows_popup(
+    monkeypatch: pytest.MonkeyPatch,
+    qtbot,
+    main_window: MainWindow,
+) -> None:
+    warnings: list[tuple[str, str]] = []
+
+    def fake_critical(_parent, title: str, text: str) -> None:
+        warnings.append((title, text))
+
+    def fail_save(*_args, **_kwargs) -> None:
+        raise OSError("permission denied")
+
+    monkeypatch.setattr(main_window_module, "save_servers", fail_save)
+    monkeypatch.setattr(QMessageBox, "critical", fake_critical)
+
+    qtbot.mouseClick(main_window._btn_add, Qt.MouseButton.LeftButton)
+    main_window._label_edit.setText("X")
+    main_window._user_edit.setText("ec2-user")
+    main_window._instance_edit.setText("i-0123456789abcdef0")
+    qtbot.mouseClick(main_window._btn_save, Qt.MouseButton.LeftButton)
+
+    assert warnings
+    assert warnings[0][0] == "Save failed"
+    assert "Could not save" in warnings[0][1]

@@ -41,7 +41,22 @@ Alternatively:
 python -m ec2_instance_connect_gui
 ```
 
-Saved servers are stored in `**data/servers.json**` (created automatically). That path is gitignored.
+Saved servers are stored in a writable user location by default:
+
+- Windows: `%APPDATA%\EC2InstanceConnectGUI\data\servers.json`
+- Other OSes: `~/.ec2instanceconnectgui/data/servers.json`
+
+### Change where data is saved
+
+Use `File -> Change data directory...` in the app and pick a folder.
+
+- The app stores all server entries in `<chosen folder>/servers.json`.
+- The chosen directory path is persisted in:
+  - Windows: `%APPDATA%\EC2InstanceConnectGUI\settings.json`
+  - Other OSes: `~/.ec2instanceconnectgui/settings.json`
+- On startup, the app reads that setting and keeps using the same folder until you change it again.
+- The current data file path is shown in the status bar at the bottom of the window.
+- If you previously used the old default (`data/servers.json` in the project or next to the executable), the app copies that file into the new location on first run.
 
 ### Connect (SSH)
 

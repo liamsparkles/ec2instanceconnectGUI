@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -31,6 +32,7 @@ from ec2_instance_connect_gui.store import (
     ServerEntry,
     default_data_path,
     load_servers,
+    save_data_directory,
     save_servers,
 )
 
@@ -172,10 +174,20 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 2)
         layout.addWidget(splitter)
 
+        self._status = self.statusBar()
+        self._update_data_path_status()
+
         quit_action = QAction(self)
         quit_action.setShortcut("Ctrl+Q")
         quit_action.triggered.connect(self.close)
         self.addAction(quit_action)
+
+        change_data_dir_action = QAction("Change data directory...", self)
+        change_data_dir_action.triggered.connect(self._change_data_directory)
+        file_menu = self.menuBar().addMenu("File")
+        file_menu.addAction(change_data_dir_action)
+        file_menu.addSeparator()
+        file_menu.addAction(quit_action)
 
     def _set_fields_enabled(self, enabled: bool) -> None:
         self._label_edit.setEnabled(enabled)
@@ -338,11 +350,52 @@ class MainWindow(QMainWindow):
         except OSError as e:
             QMessageBox.critical(self, "Connect failed", str(e))
 
+    def _update_data_path_status(self) -> None:
+        self._status.showMessage(f"Data file: {self._data_path}")
+
     def _persist(self) -> None:
         try:
             save_servers(self._data_path, self._servers)
-        except OSError as e:
-            QMessageBox.critical(self, "Save failed", str(e))
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Save failed",
+                f"Could not save to {self._data_path}\n\n{e}",
+            )
+
+    def _change_data_directory(self) -> None:
+        selected = QFileDialog.getExistingDirectory(
+            self,
+            "Choose data folder",
+            str(self._data_path.parent),
+        )
+        if not selected:
+            return
+        new_dir = Path(selected)
+        new_path = new_dir / "servers.json"
+        try:
+            new_dir.mkdir(parents=True, exist_ok=True)
+            if not new_path.is_file():
+                if self._servers:
+                    save_servers(new_path, self._servers)
+                elif self._data_path.is_file():
+                    shutil.copy2(self._data_path, new_path)
+            save_data_directory(new_dir)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Data directory error",
+                f"Could not set data directory to:\n{new_dir}\n\n{e}",
+            )
+            return
+        self._data_path = new_path
+        self._update_data_path_status()
+        self._reload_list()
+        QMessageBox.information(
+            self,
+            "Data directory updated",
+            f"Server entries will now be saved in:\n{self._data_path}",
+        )
 
 
 def run_app(data_path: Optional[Path] = None) -> int:
