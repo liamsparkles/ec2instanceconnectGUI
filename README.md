@@ -7,7 +7,9 @@ This application is almost fully vibe coded, it is a simple program that I just 
 ## Prerequisites
 
 - **Python** 3.10 or newer (64-bit recommended on Windows)
+- **Mssh** If just installing the release package, you'll have to manually run `pip install ec2instanceconnectcli`
 - **Git** (optional), to clone the repository
+
 
 ## Setup
 
